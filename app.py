@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-
+import json
 from statsmodels.tsa.arima_model import ARIMA
 
 
@@ -20,7 +20,7 @@ CORS(app)
 
 @app.route('/')
 def home():
-    return 'ARIMA_Analysis'
+    return render_template('index.html')
 
 
 @app.route('/predict')
@@ -30,10 +30,10 @@ def predict():
 
     stockcodefiledict = {'AAPL': 'future_aapl.csv', 'MSFT': 'future_msft.csv'}
     staticfiledict = {'AAPL': 'AAPL.csv', 'MSFT': 'MSFT.csv'}
-    stockcode = args['stockcode']
+    stockCode = args['stockCode']
     futuredays = int(args['futuredays'])
 
-    df = pd.read_csv(staticfiledict[stockcode])
+    df = pd.read_csv(staticfiledict[stockCode])
     df = df[['Date', 'Open']]
     pdf = df['Open']
     fdf = pd.DataFrame(columns=['Open'])
@@ -59,7 +59,7 @@ def predict():
     apidf = pd.concat([rdf, fdf[:-1]], axis=1, join='inner')
 
 
-    apidf.to_csv(stockcodefiledict[stockcode])
+    apidf.to_csv(stockcodefiledict[stockCode])
     return str(apidf.set_index('Date').T.to_dict('records'))
 
 
@@ -74,17 +74,65 @@ def furure_predict():
     '''
     args = request.args
 
-    stockcode = args['stockcode']
+    stockCode = args['stockCode']
     futuredays = int(args['futuredays'])
 
-    stockdf = pd.read_csv(stockcodefiledict[stockcode])
+    stockdf = pd.read_csv(stockcodefiledict[stockCode])
     stockdf = stockdf[stockdf['Date'] > datetime.now().strftime('%Y-%m-%d')]
     stockdf = stockdf[['Date', 'Open']].head(futuredays)
 
     return str(stockdf.set_index('Date').T.to_dict('records'))  # For debugging
 
 
+@app.route('/historicdata')
+def historic_data():
+    stockcodefiledict = {'AAPL': 'AAPL.csv', 'MSFT': 'MSFT.csv'}
 
+    # return str(df.set_index('Date').T.to_dict('records'))
+    '''
+         1. stockcode    (AAPL, MSFT)
+         2. futuredays   (10,30,90)
+    '''
+    args = request.args
+
+    stockCode = args['stockCode']
+    startDate = args['startDate']
+    endDate = args['endDate']
+
+    stockdf = pd.read_csv(stockcodefiledict[stockCode])
+
+    filterdf = stockdf[(stockdf['Date'] >= startDate) & (stockdf['Date'] <= endDate)]
+    filterdf = filterdf[['Date', 'Open']]
+
+    return  json.dumps(filterdf.set_index('Date').T.to_dict('records'))  # For debugging
+
+
+
+
+
+
+@app.route('/futuredata')
+def future_data():
+
+    stockcodefiledict = {'AAPL': 'future_aapl.csv', 'MSFT': 'future_msft.csv'}
+
+    # return str(df.set_index('Date').T.to_dict('records'))
+    '''
+         1. stockcode    (AAPL, MSFT)
+         2. futuredays   (10,30,90)
+    '''
+    args = request.args
+
+    stockCode = args['stockCode']
+    startDate = args['startDate']
+    endDate = args['endDate']
+
+    stockdf = pd.read_csv(stockcodefiledict[stockCode])
+
+    filterdf = stockdf[(stockdf['Date'] >= startDate) & (stockdf['Date'] <= endDate)]
+    filterdf = filterdf[['Date', 'Open']]
+
+    return str(filterdf.set_index('Date').T.to_dict('records'))  # For debugging
 
 if __name__ == '__main__':
     app.run(debug=True)
